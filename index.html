@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl2 - volume - cloud</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	
+	</head>
+
+	<body>
+
+
+		<!-- Import maps polyfill -->
+		<!-- Remove this when import maps will be widely supported -->
+		<script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+
+		<script type="importmap">
+			{
+				"imports": {
+					"three": "../js/three.module.js"
+				}
+			}
+		</script>
+
+		<input type="file">
+		<button id="myBtn">Try it</button>
+		<pre id="txt_file" style="display: none;"></pre>
+
+		<script type="module">
+			import * as THREE from 'three';
+			import { OrbitControls } from './controls/OrbitControls.js';
+			import { ImprovedNoise } from './math/ImprovedNoise.js';
+
+			import { GUI } from './libs/lil-gui.module.min.js';
+			import WebGL from './capabilities/WebGL.js';
+
+			if ( WebGL.isWebGL2Available() === false ) {
+
+				document.body.appendChild( WebGL.getWebGL2ErrorMessage() );
+
+			}
+
+			let renderer, scene, camera;
+			let mesh;
+
+			console.log("start.");
+			var txt;
+			document.getElementById("myBtn").addEventListener("click", function() {
+
+				var reader = new FileReader();
+				console.log("click");	
+				reader.addEventListener('load', function() {
+					console.log('loaded');
+					document.getElementById('txt_file').innerText = this.result;
+					txt = reader.result;
+					
+					const size = 128;
+					const float_data = new Float32Array(size * size * size * 4);
+					const data = new Uint8Array( size * size * size * 4);
+					var n = 0;
+
+					var txt_split = txt.split('\n');
+					console.log(txt_split.length);
+					for (let i = 0; i < txt_split.length; i++)
+					{
+						if (txt_split[i].length)
+						{
+							var split = txt_split[i].split(' ');
+							for (let j = 0; j < split.length; j++)
+							{
+								var f = parseFloat(split[j]);
+								float_data[n++] = f;
+							}
+						}
+					}
+					
+					var c_min = 1000000;
+					var c_max = -1000000;
+					var a_min = 1000000;
+					var a_max = -1000000;
+					for (let i = 0; i < size * size * size; i++)
+					{
+						if (float_data[i*4 + 0] < c_min) c_min = float_data[i*4 + 0];
+						if (float_data[i*4 + 1] < c_min) c_min = float_data[i*4 + 1];
+						if (float_data[i*4 + 2] < c_min) c_min = float_data[i*4 + 2];
+						if (float_data[i*4 + 3] < a_min) a_min = float_data[i*4 + 3];
+						if (float_data[i*4 + 0] > c_max) c_max = float_data[i*4 + 0];
+						if (float_data[i*4 + 1] > c_max) c_max = float_data[i*4 + 1];
+						if (float_data[i*4 + 2] > c_max) c_max = float_data[i*4 + 2];
+						if (float_data[i*4 + 3] > a_max) a_max = float_data[i*4 + 3];
+					}
+					for (let i = 0; i < size * size * size; i++)
+					{
+						data[i*4 + 0] = 255 * (float_data[i*4 + 0] - c_min) / (c_max - c_min);
+						data[i*4 + 1] = 255 * (float_data[i*4 + 1] - c_min) / (c_max - c_min);
+						data[i*4 + 2] = 255 * (float_data[i*4 + 2] - c_min) / (c_max - c_min);
+						data[i*4 + 3] = 255 * (float_data[i*4 + 3] - a_min) / (a_max - a_min);
+					}
+	
+					console.log("c_min", c_min);
+					console.log("c_max", c_max);
+					console.log("a_min", a_min);
+					console.log("a_max", a_max);
+					renderer = new THREE.WebGLRenderer();
+					renderer.setPixelRatio( window.devicePixelRatio );
+					renderer.setSize( window.innerWidth, window.innerHeight );
+					document.body.appendChild( renderer.domElement );
+		
+					scene = new THREE.Scene();
+		
+					camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 );
+					camera.position.set( 0, 0, 1.5 );
+		
+					new OrbitControls( camera, renderer.domElement );
+		
+		
+					// Texture
+					const texture = new THREE.Data3DTexture( data, size, size, size );
+					texture.format = THREE.RGBAFormat;
+					texture.minFilter = THREE.LinearFilter;
+					texture.magFilter = THREE.LinearFilter;
+					texture.unpackAlignment = 1;
+					texture.needsUpdate = true;
+		
+					// Material
+		
+					const vertexShader = /* glsl */`
+						in vec3 position;
+						uniform mat4 modelMatrix;
+						uniform mat4 modelViewMatrix;
+						uniform mat4 projectionMatrix;
+						uniform vec3 cameraPos;
+						out vec3 vOrigin;
+						out vec3 vDirection;
+						void main() {
+							vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+							vOrigin = vec3( inverse( modelMatrix ) * vec4( cameraPos, 1.0 ) ).xyz;
+							vDirection = position - vOrigin;
+							gl_Position = projectionMatrix * mvPosition;
+						}
+					`;
+		
+					const fragmentShader = /* glsl */`
+						precision highp float;
+						precision highp sampler3D;
+						uniform mat4 modelViewMatrix;
+						uniform mat4 projectionMatrix;
+						in vec3 vOrigin;
+						in vec3 vDirection;
+						out vec4 color;
+						uniform vec3 base;
+						uniform sampler3D map;
+						uniform float threshold;
+						uniform float range;
+						uniform float opacity;
+						uniform float steps;
+						uniform float frame;
+						uniform float c_min;
+						uniform float c_max;
+						uniform float a_min;
+						uniform float a_max;
+						#define SH_C0 0.28209479177387814
+						#define SH_C1 0.4886025119029199
+						#define SH_C2_0 1.0925484305920792
+						#define SH_C2_1 -1.0925484305920792
+						#define SH_C2_2 0.31539156525252005
+						#define SH_C2_3 -1.0925484305920792
+						#define SH_C2_4 0.5462742152960396
+						uint wang_hash(uint seed)
+						{
+							seed = (seed ^ 61u) ^ (seed >> 16u);
+							seed *= 9u;
+							seed = seed ^ (seed >> 4u);
+							seed *= 0x27d4eb2du;
+							seed = seed ^ (seed >> 15u);
+							return seed;
+						}
+						float randomFloat(inout uint seed)
+						{
+							return float(wang_hash(seed)) / 4294967296.;
+						}
+						vec2 hitBox( vec3 orig, vec3 dir ) {
+							const vec3 box_min = vec3( - 0.5 );
+							const vec3 box_max = vec3( 0.5 );
+							vec3 inv_dir = 1.0 / dir;
+							vec3 tmin_tmp = ( box_min - orig ) * inv_dir;
+							vec3 tmax_tmp = ( box_max - orig ) * inv_dir;
+							vec3 tmin = min( tmin_tmp, tmax_tmp );
+							vec3 tmax = max( tmin_tmp, tmax_tmp );
+							float t0 = max( tmin.x, max( tmin.y, tmin.z ) );
+							float t1 = min( tmax.x, min( tmax.y, tmax.z ) );
+							return vec2( t0, t1 );
+						}
+						float sample1( vec3 p ) {
+							return texture( map, p ).r;
+						}
+						vec4 sample4(vec3 p)
+						{
+							vec4 ret = vec4(0.0, 0.0, 0.0, 0.0);
+							ret.rgb = texture(map, p).rgb * (c_max - c_min) + c_min;
+							ret.a = texture(map, p).a * (a_max - a_min) + a_min;
+							return ret;
+						}
+						float shading( vec3 coord ) {
+							float step = 0.01;
+							return sample1( coord + vec3( - step ) ) - sample1( coord + vec3( step ) );
+						}
+						void main(){
+							vec3 rayDir = normalize( vDirection );
+							vec2 bounds = hitBox( vOrigin, rayDir );
+							if ( bounds.x > bounds.y ) discard;
+							bounds.x = max( bounds.x, 0.0 );
+							vec3 p = vOrigin + bounds.x * rayDir;
+							vec3 inc = 1.0 / abs( rayDir );
+							float delta = min( inc.x, min( inc.y, inc.z ) );
+							delta /= steps;
+							// Jitter
+							// Nice little seed from
+							// https://blog.demofox.org/2020/05/25/casual-shadertoy-path-tracing-1-basic-camera-diffuse-emissive/
+							
+							//
+							vec4 ac = vec4( 0.0, 0.0, 0.0, 0.0 );
+							float log_light_intensity = 0.0f;
+							for ( float t = bounds.x; t < bounds.y; t += delta ) {
+								vec4 sampledColor = sample4(p + 0.5);
+								if (sampledColor.a > 0.0)
+								{
+									float log_att = -delta * sampledColor.a;
+									float weight = exp(log_light_intensity) * (1.0 - exp(log_att));
+									vec3 c_clamp = sampledColor.bgr * SH_C0 + 0.5f;
+									c_clamp[0] = max(c_clamp[0], 0.0f);
+									c_clamp[1] = max(c_clamp[1], 0.0f);
+									c_clamp[2] = max(c_clamp[2], 0.0f);
+									ac.rgb += weight * c_clamp;
+									ac.a = 1.0;
+									log_light_intensity += log_att;
+								}
+								p += rayDir * delta;
+							}
+							color = ac;
+							if ( color.a == 0.0 ) discard;
+						}
+					`;
+		
+					const geometry = new THREE.BoxGeometry( 1, 1, 1 );
+					const material = new THREE.RawShaderMaterial( {
+						glslVersion: THREE.GLSL3,
+						uniforms: {
+							base: { value: new THREE.Color( 0x798aa0 ) },
+							map: { value: texture },
+							cameraPos: { value: new THREE.Vector3() },
+							threshold: { value: 0.25 },
+							opacity: { value: 0.25 },
+							range: { value: 0.1 },
+							steps: { value: 100 },
+							frame: { value: 0 },
+							c_min: { value: c_min},
+							c_max: { value: c_max},
+							a_min: { value: a_min},
+							a_max: { value: a_max},
+						},
+						vertexShader,
+						fragmentShader,
+						side: THREE.BackSide,
+						transparent: true
+					} );
+		
+					mesh = new THREE.Mesh( geometry, material );
+					scene.add( mesh );
+		
+					//
+		
+					const parameters = {
+						threshold: 0.25,
+						opacity: 0.25,
+						range: 0.1,
+						steps: 100,
+						c_min: c_min,
+						c_max: c_max,
+						a_min: a_min,
+						a_max: a_max,
+					};
+		
+					function update() {
+		
+						material.uniforms.threshold.value = parameters.threshold;
+						material.uniforms.opacity.value = parameters.opacity;
+						material.uniforms.range.value = parameters.range;
+						material.uniforms.steps.value = parameters.steps;
+						material.uniforms.c_min.value = parameters.c_min;
+						material.uniforms.c_max.value = parameters.c_axn;
+						material.uniforms.a_min.value = parameters.a_min;
+						material.uniforms.a_max.value = parameters.a_axn;
+		
+					}
+		
+					const gui = new GUI();
+					gui.add( parameters, 'threshold', 0, 1, 0.01 ).onChange( update );
+					gui.add( parameters, 'opacity', 0, 1, 0.01 ).onChange( update );
+					gui.add( parameters, 'range', 0, 1, 0.01 ).onChange( update );
+					gui.add( parameters, 'steps', 0, 500, 1 ).onChange( update );
+		
+					window.addEventListener( 'resize', onWindowResize );
+		
+					
+					animate();
+		
+					function onWindowResize() {
+		
+						camera.aspect = window.innerWidth / window.innerHeight;
+						camera.updateProjectionMatrix();
+		
+						renderer.setSize( window.innerWidth, window.innerHeight );
+		
+					}
+		
+					function animate() {
+		
+						requestAnimationFrame( animate );
+		
+						mesh.material.uniforms.cameraPos.value.copy( camera.position );
+						mesh.rotation.z = - performance.now() / 7500;
+		
+						mesh.material.uniforms.frame.value ++;
+		
+						renderer.render( scene, camera );
+		
+					}
+				});
+				reader.readAsText(document.querySelector('input').files[0]);
+			});
+
+		</script>
+
+	</body>
+</html>
