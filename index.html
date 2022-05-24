@@ -143,8 +143,8 @@
 						uniform sampler3D map;
 						uniform sampler3D map2;
 						uniform float threshold;
-						uniform float low_steps;
-						uniform float high_steps;
+						uniform float corase_steps;
+						uniform float fine_steps;
 						uniform float frame;
 						uniform float c_min;
 						uniform float c_max;
@@ -191,11 +191,11 @@
 							vec3 p = vOrigin + bounds.x * rayDir;
 							vec3 inc = 1.0 / abs( rayDir );
 							float delta = min( inc.x, min( inc.y, inc.z ) );
-							float low_delta = min(delta, 1.f) / low_steps;
-							float high_delta = 0.5f / high_steps;
+							float low_delta = min(delta, 1.f) / corase_steps;
+							float high_delta = 0.5f / fine_steps;
 
-							int low_N = int(low_steps);
-							int high_N = int(high_steps);
+							int low_N = int(corase_steps);
+							int high_N = int(fine_steps);
 
 							float _threshold = threshold * (a_max - a_min) + a_min;
 
@@ -233,7 +233,7 @@
 							}
 							if ( max_ac.a == 0.0 ) discard;
 
-							p = max_weight_position - (high_steps / 2.0f) * rayDir * high_delta;
+							p = max_weight_position - (fine_steps / 2.0f) * rayDir * high_delta;
 							//vec4 ac = max_ac;
 							vec4 ac = vec4(0.0, 0.0, 0.0, 0.0);
 							float log_light_intensity = 0.0;
@@ -272,8 +272,8 @@
 				map2: { value: texture },
 				cameraPos: { value: new THREE.Vector3() },
 				threshold: { value: 0.49 },
-				low_steps: { value: 500 },
-				high_steps: { value: 8 },
+				corase_steps: { value: 500 },
+				fine_steps: { value: 8 },
 				frame: { value: 0 },
 				c_min: { value: c_min },
 				c_max: { value: c_max },
@@ -297,8 +297,8 @@
 
 		const parameters = {
 			threshold: 0.49,
-			low_steps: 500,
-			high_steps: 8,
+			corase_steps: 500,
+			fine_steps: 8,
 			c_min: c_min,
 			c_max: c_max,
 			a_min: a_min,
@@ -308,20 +308,17 @@
 		function update() {
 
 			material.uniforms.threshold.value = parameters.threshold;
-			material.uniforms.low_steps.value = parameters.low_steps;
-			material.uniforms.high_steps.value = parameters.high_steps;
-			//material.uniforms.c_min.value = parameters.c_min;
-			//material.uniforms.c_max.value = parameters.c_axn;
-			//material.uniforms.a_min.value = parameters.a_min;
-			//material.uniforms.a_max.value = parameters.a_axn;
+			material.uniforms.corase_steps.value = parameters.corase_steps;
+			material.uniforms.fine_steps.value = parameters.fine_steps;
+			
 
 
 		}
 
 		const gui = new GUI();
 		gui.add(parameters, 'threshold', 0, 1, 0.01).onChange(update);
-		gui.add(parameters, 'low_steps', 0, 500, 1).onChange(update);
-		gui.add(parameters, 'high_steps', 0, 500, 1).onChange(update);
+		gui.add(parameters, 'corase_steps', 0, 500, 1).onChange(update);
+		gui.add(parameters, 'fine_steps', 0, 500, 1).onChange(update);
 		//gui.add( parameters, 'c_min', -10, 10, 0.01 ).onChange( update );
 		//gui.add( parameters, 'c_max', -10, 10, 0.01 ).onChange( update );
 		//gui.add( parameters, 'a_min', -10, 10, 0.01 ).onChange( update );
