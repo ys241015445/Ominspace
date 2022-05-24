@@ -8,7 +8,7 @@
 
 </head>
 
-<body>
+<body bgcolor="black">
 
 
 	<!-- Import maps polyfill -->
@@ -26,11 +26,13 @@
 
 	<script type="module">
 		import * as THREE from 'three';
-		import { OrbitControls } from 'https://ys241015445.github.io/Ominspace/controls/OrbitControls.js';
-		import { ImprovedNoise } from 'https://ys241015445.github.io/Ominspace/math/ImprovedNoise.js';
+		import { OrbitControls } from 'https://ys241015445.github.io/Ominspace//controls/OrbitControls.js';
+		import { ImprovedNoise } from 'https://ys241015445.github.io/Ominspace//math/ImprovedNoise.js';
 
 		import { GUI } from 'https://ys241015445.github.io/Ominspace/libs/lil-gui.module.min.js';
 		import WebGL from 'https://ys241015445.github.io/Ominspace/capabilities/WebGL.js';
+		import Stats from 'https://ys241015445.github.io/Ominspace/libs/stats.module.js';
+
 
 		if (WebGL.isWebGL2Available() === false) {
 
@@ -43,13 +45,13 @@
 
 		console.log("start.");
 		var txt;
-		txt = readTextFile('https://ys241015445.github.io/Ominspace/lego_256.txt');
+		txt = readTextFile('lego_256.txt');
 
 
 		const size = 256;
 		const float_data = new Float32Array(size * size * size * 4);
 		const data = new Uint8Array(size * size * size * 4);
-		
+
 		var n = 0;
 
 		var txt_split = txt.split('\n');
@@ -67,56 +69,54 @@
 
 
 		var c_min = 1000000;
-					var c_max = -1000000;
-					var a_min = 1000000;
-					var a_max = -1000000;
-					for (let i = 0; i < size * size * size; i++)
-					{
-						if (float_data[i*4 + 0] < c_min) c_min = float_data[i*4 + 0];
-						if (float_data[i*4 + 1] < c_min) c_min = float_data[i*4 + 1];
-						if (float_data[i*4 + 2] < c_min) c_min = float_data[i*4 + 2];
-						if (float_data[i*4 + 3] < a_min) a_min = float_data[i*4 + 3];
-						if (float_data[i*4 + 0] > c_max) c_max = float_data[i*4 + 0];
-						if (float_data[i*4 + 1] > c_max) c_max = float_data[i*4 + 1];
-						if (float_data[i*4 + 2] > c_max) c_max = float_data[i*4 + 2];
-						if (float_data[i*4 + 3] > a_max) a_max = float_data[i*4 + 3];
-					}
-					for (let i = 0; i < size * size * size; i++)
-					{
-						data[i*4 + 0] = 255 * (float_data[i*4 + 0] - c_min) / (c_max - c_min);
-						data[i*4 + 1] = 255 * (float_data[i*4 + 1] - c_min) / (c_max - c_min);
-						data[i*4 + 2] = 255 * (float_data[i*4 + 2] - c_min) / (c_max - c_min);
-						data[i*4 + 3] = 255 * (float_data[i*4 + 3] - a_min) / (a_max - a_min);
-					}
-	
-					console.log("c_min", c_min);
-					console.log("c_max", c_max);
-					console.log("a_min", a_min);
-					console.log("a_max", a_max);
-					renderer = new THREE.WebGLRenderer();
-					renderer.setPixelRatio( window.devicePixelRatio );
-					renderer.setSize( window.innerWidth, window.innerHeight );
-					document.body.appendChild( renderer.domElement );
-		
-					scene = new THREE.Scene();
-					
-					camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 100 );
-					camera.position.set( 0, 0, 1.5 );
-		
-					new OrbitControls( camera, renderer.domElement );
-		            
-		
-					// Texture
-					const texture = new THREE.Data3DTexture( data, size, size, size );
-					texture.format = THREE.RGBAFormat;
-					texture.minFilter = THREE.LinearFilter;
-					texture.magFilter = THREE.LinearFilter;
-					texture.unpackAlignment = 1;
-					texture.needsUpdate = true;
-		
-					// Material
-		
-					const vertexShader = /* glsl */`
+		var c_max = -1000000;
+		var a_min = 1000000;
+		var a_max = -1000000;
+		for (let i = 0; i < size * size * size; i++) {
+			if (float_data[i * 4 + 0] < c_min) c_min = float_data[i * 4 + 0];
+			if (float_data[i * 4 + 1] < c_min) c_min = float_data[i * 4 + 1];
+			if (float_data[i * 4 + 2] < c_min) c_min = float_data[i * 4 + 2];
+			if (float_data[i * 4 + 3] < a_min) a_min = float_data[i * 4 + 3];
+			if (float_data[i * 4 + 0] > c_max) c_max = float_data[i * 4 + 0];
+			if (float_data[i * 4 + 1] > c_max) c_max = float_data[i * 4 + 1];
+			if (float_data[i * 4 + 2] > c_max) c_max = float_data[i * 4 + 2];
+			if (float_data[i * 4 + 3] > a_max) a_max = float_data[i * 4 + 3];
+		}
+		for (let i = 0; i < size * size * size; i++) {
+			data[i * 4 + 0] = 255 * (float_data[i * 4 + 0] - c_min) / (c_max - c_min);
+			data[i * 4 + 1] = 255 * (float_data[i * 4 + 1] - c_min) / (c_max - c_min);
+			data[i * 4 + 2] = 255 * (float_data[i * 4 + 2] - c_min) / (c_max - c_min);
+			data[i * 4 + 3] = 255 * (float_data[i * 4 + 3] - a_min) / (a_max - a_min);
+		}
+
+		console.log("c_min", c_min);
+		console.log("c_max", c_max);
+		console.log("a_min", a_min);
+		console.log("a_max", a_max);
+		renderer = new THREE.WebGLRenderer();
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+
+		scene = new THREE.Scene();
+
+		camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+		camera.position.set(0, 0, 1.5);
+
+		new OrbitControls(camera, renderer.domElement);
+
+
+		// Texture
+		const texture = new THREE.Data3DTexture(data, size, size, size);
+		texture.format = THREE.RGBAFormat;
+		texture.minFilter = THREE.LinearFilter;
+		texture.magFilter = THREE.LinearFilter;
+		texture.unpackAlignment = 1;
+		texture.needsUpdate = true;
+
+		// Material
+
+		const vertexShader = /* glsl */`
 						in vec3 position;
 						uniform mat4 modelMatrix;
 						uniform mat4 modelViewMatrix;
@@ -131,8 +131,8 @@
 							gl_Position = projectionMatrix * mvPosition;
 						}
 					`;
-		
-					const fragmentShader = /* glsl */`
+
+		const fragmentShader = /* glsl */`
 						precision highp float;
 						precision highp sampler3D;
 						uniform mat4 modelViewMatrix;
@@ -259,108 +259,124 @@
 							if ( color.a == 0.0 ) discard;
 						}
 					`;
-		
-					const geometry = new THREE.BoxGeometry( 1, 1, 1 );
-					const material = new THREE.RawShaderMaterial( {
-						glslVersion: THREE.GLSL3,
-						uniforms: {
-							map: { value: texture },
-							map2: { value: texture },
-							cameraPos: { value: new THREE.Vector3() },
-							threshold: { value: 0.49 },
-							low_steps: { value: 500 },
-							high_steps: { value: 8 },
-							frame: { value: 0 },
-							c_min: { value: c_min},
-							c_max: { value: c_max},
-							a_min: { value: a_min},
-							a_max: { value: a_max},
-						},
-						vertexShader,
-						fragmentShader,
-						side: THREE.BackSide,
-						transparent: true
-					} );
-		
-					mesh = new THREE.Mesh( geometry, material );
-					scene.add( mesh );
-		
-					//
-		
-					const parameters = {
-						threshold: 0.49,
-						low_steps: 500,
-						high_steps: 8,
-						c_min: c_min,
-						c_max: c_max,
-						a_min: a_min,
-						a_max: a_max,
-					};
-		
-					function update() {
-		
-						material.uniforms.threshold.value = parameters.threshold;
-						material.uniforms.low_steps.value = parameters.low_steps;
-						material.uniforms.high_steps.value = parameters.high_steps;
-						//material.uniforms.c_min.value = parameters.c_min;
-						//material.uniforms.c_max.value = parameters.c_axn;
-						//material.uniforms.a_min.value = parameters.a_min;
-						//material.uniforms.a_max.value = parameters.a_axn;
-					
-		
-					}
-		
-					const gui = new GUI();
-					gui.add( parameters, 'threshold', 0, 1, 0.01 ).onChange( update );
-					gui.add( parameters, 'low_steps', 0, 500, 1 ).onChange( update );
-					gui.add( parameters, 'high_steps', 0, 500, 1 ).onChange( update );
-					//gui.add( parameters, 'c_min', -10, 10, 0.01 ).onChange( update );
-					//gui.add( parameters, 'c_max', -10, 10, 0.01 ).onChange( update );
-					//gui.add( parameters, 'a_min', -10, 10, 0.01 ).onChange( update );
-					//gui.add( parameters, 'a_max', -10, 10, 0.01 ).onChange( update );
-		
-					window.addEventListener( 'resize', onWindowResize );
-		
-					
-					animate();
-				
-					
-					function initStats() {
-						var stats = new Stats();
-						//设置统计模式
-						stats.setMode(0); // 0: fps, 1: ms
-						//统计信息显示在左上角
-						stats.domElement.style.position = 'absolute';
-						stats.domElement.style.left = '10px';
-						stats.domElement.style.top = '30px';
-						//将统计对象添加到对应的<div>元素中
-						document.getElementById("Stats-output").appendChild(stats.domElement);
-						return stats;
-					}
-					
-					function onWindowResize() {
-		
-						camera.aspect = window.innerWidth / window.innerHeight;
-						camera.updateProjectionMatrix();
-		
-						renderer.setSize( window.innerWidth, window.innerHeight );
-		
-					}
-		
-					function animate() {
-					
-						requestAnimationFrame( animate );
-		
-						mesh.material.uniforms.cameraPos.value.copy( camera.position );
-						//mesh.rotation.y = - performance.now() / 7500;
-		
-						mesh.material.uniforms.frame.value ++;
-						
-						renderer.render( scene, camera );
-						
-		
-					}
-			
+
+		var stats = new Stats();
+		stats.showPanel(1); // 0: fps, 1: ms, 2: mb, 3+: custom
+		document.body.appendChild(stats.dom);
+
+		const geometry = new THREE.BoxGeometry(1, 1, 1);
+		const material = new THREE.RawShaderMaterial({
+			glslVersion: THREE.GLSL3,
+			uniforms: {
+				map: { value: texture },
+				map2: { value: texture },
+				cameraPos: { value: new THREE.Vector3() },
+				threshold: { value: 0.49 },
+				low_steps: { value: 500 },
+				high_steps: { value: 8 },
+				frame: { value: 0 },
+				c_min: { value: c_min },
+				c_max: { value: c_max },
+				a_min: { value: a_min },
+				a_max: { value: a_max },
+			},
+			vertexShader,
+			fragmentShader,
+			side: THREE.BackSide,
+			transparent: true
+		});
+
+		mesh = new THREE.Mesh(geometry, material);
+		scene.add(mesh);
+
+		mesh.rotation.x = + 10;
+		mesh.rotation.y = + 10;
+		mesh.rotation.z = + 5;
+		//mesh.rotation.x = +1000;
+		//
+
+		const parameters = {
+			threshold: 0.49,
+			low_steps: 500,
+			high_steps: 8,
+			c_min: c_min,
+			c_max: c_max,
+			a_min: a_min,
+			a_max: a_max,
+		};
+
+		function update() {
+
+			material.uniforms.threshold.value = parameters.threshold;
+			material.uniforms.low_steps.value = parameters.low_steps;
+			material.uniforms.high_steps.value = parameters.high_steps;
+			//material.uniforms.c_min.value = parameters.c_min;
+			//material.uniforms.c_max.value = parameters.c_axn;
+			//material.uniforms.a_min.value = parameters.a_min;
+			//material.uniforms.a_max.value = parameters.a_axn;
+
+
+		}
+
+		const gui = new GUI();
+		gui.add(parameters, 'threshold', 0, 1, 0.01).onChange(update);
+		gui.add(parameters, 'low_steps', 0, 500, 1).onChange(update);
+		gui.add(parameters, 'high_steps', 0, 500, 1).onChange(update);
+		//gui.add( parameters, 'c_min', -10, 10, 0.01 ).onChange( update );
+		//gui.add( parameters, 'c_max', -10, 10, 0.01 ).onChange( update );
+		//gui.add( parameters, 'a_min', -10, 10, 0.01 ).onChange( update );
+		//gui.add( parameters, 'a_max', -10, 10, 0.01 ).onChange( update );
+
+		window.addEventListener('resize', onWindowResize);
+
+
+		animate();
+
+
+		function initStats() {
+			var stats = new Stats();
+			//设置统计模式
+			stats.setMode(0); // 0: fps, 1: ms
+			//统计信息显示在左上角
+			stats.domElement.style.position = 'absolute';
+			stats.domElement.style.left = '10px';
+			stats.domElement.style.top = '30px';
+			//将统计对象添加到对应的<div>元素中
+			document.getElementById("Stats-output").appendChild(stats.domElement);
+			return stats;
+		}
+
+		function onWindowResize() {
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+			renderer.setSize(window.innerWidth, window.innerHeight);
+
+		}
+
+		function animate() {
+			stats.begin();
+
+			// monitored code goes here
+
+			stats.end();
+
+			requestAnimationFrame(animate);
+
+			mesh.material.uniforms.cameraPos.value.copy(camera.position);
+
+			mesh.rotation.y = - performance.now() / 7500;
+
+			mesh.material.uniforms.frame.value++;
+			renderer.render(scene, camera);
+
+
+
+
+
+
+		}
+
 
 		function readTextFile(file) {
 			var rawFile = new XMLHttpRequest();
