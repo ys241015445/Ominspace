@@ -18,7 +18,7 @@
 	<script type="importmap">
 			{
 				"imports": {
-					"three": "https://ys241015445.github.io/Ominspace/js/three.module.js"
+					"three": "./js/three.module.js"
 				}
 			}
 		</script>
@@ -26,12 +26,12 @@
 
 	<script type="module">
 		import * as THREE from 'three';
-		import { OrbitControls } from 'https://ys241015445.github.io/Ominspace//controls/OrbitControls.js';
-		import { ImprovedNoise } from 'https://ys241015445.github.io/Ominspace//math/ImprovedNoise.js';
+		import { OrbitControls } from './controls/OrbitControls.js';
+		import { ImprovedNoise } from './math/ImprovedNoise.js';
 
-		import { GUI } from 'https://ys241015445.github.io/Ominspace/libs/lil-gui.module.min.js';
-		import WebGL from 'https://ys241015445.github.io/Ominspace/capabilities/WebGL.js';
-		import Stats from 'https://ys241015445.github.io/Ominspace/libs/stats.module.js';
+		import { GUI } from './libs/lil-gui.module.min.js';
+		import WebGL from './capabilities/WebGL.js';
+		import Stats from './libs/stats.module.js';
 
 
 		if (WebGL.isWebGL2Available() === false) {
